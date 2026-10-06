@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo } from "next/font/google";
 import Providers from "@/components/Providers";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
+  axes: ["wdth"],
+});
 
 export const metadata: Metadata = {
   title: "Adrian Rodriguez · Web & Mobile Developer",
@@ -20,22 +23,21 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f7f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#121614" },
+    { media: "(prefers-color-scheme: light)", color: "#f2f3f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0c0f" },
   ],
 };
 
-const themeInit = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);if(sessionStorage.getItem('intro')==='seen')document.documentElement.dataset.intro='seen'}catch(e){document.documentElement.classList.add('dark')}})();`;
+const themeInit = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d)}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={archivo.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body>
         <Providers>{children}</Providers>
-        <div className="grain" aria-hidden />
       </body>
     </html>
   );

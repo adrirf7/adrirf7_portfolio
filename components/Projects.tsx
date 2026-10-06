@@ -1,275 +1,405 @@
 "use client";
 
-import { useRef, useState } from "react";
-import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import {
   AnimatePresence,
   motion,
-  useMotionTemplate,
   useMotionValue,
+  useMotionValueEvent,
+  useScroll,
   useSpring,
   useTransform,
+  type MotionValue,
 } from "motion/react";
-import { ArrowUpRightIcon, CaretDownIcon, GithubLogoIcon } from "@phosphor-icons/react";
-import { PROJECTS, projectImage, type Category, type Project } from "@/lib/data";
+import { ArrowRightIcon, ArrowUpRightIcon, GithubLogoIcon } from "@phosphor-icons/react";
+import { LINKS, PROJECTS, projectImage, type Project } from "@/lib/data";
+import { useLenis } from "lenis/react";
+import { UI, fmt } from "@/lib/i18n";
 import { useApp } from "./Providers";
-import RevealText from "./ui/RevealText";
 import TechIcon from "./ui/TechIcon";
+import KineticTitle from "./ui/KineticTitle";
+import LiquidImage from "./gl/LiquidImage";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
-const EASE_IN_OUT = [0.77, 0, 0.175, 1] as const;
-const INITIAL_COUNT = 4;
-const FILTERS: ("All" | Category)[] = ["All", "Web", "Mobile"];
+// Card width is bounded by the viewport height too: image (w / 1.6) + text block + rail + nav must fit
+const CARD_W = "w-full lg:w-[max(300px,min(40vw,calc((100dvh-480px)*1.6),680px))]";
 
-/** The screenshot: tilts toward the cursor, pans inside its frame, and opens the live site. */
-function ProjectMedia({ project }: { project: Project }) {
-  const { theme } = useApp();
+/**
+ * Screenshot that drifts toward the cursor and opens the live site. The picture itself is
+ * drawn by a shader: it ripples from the cursor and bends with the gallery's speed.
+ */
+function Media({ project }: { project: Project }) {
+  const { theme, t } = useApp();
   const ref = useRef<HTMLAnchorElement>(null);
   const [hovering, setHovering] = useState(false);
 
-  // Normalised cursor position inside the frame (0..1)
-  const px = useMotionValue(0.5);
-  const py = useMotionValue(0.5);
-  const sx = useSpring(px, { stiffness: 150, damping: 18, mass: 0.6 });
-  const sy = useSpring(py, { stiffness: 150, damping: 18, mass: 0.6 });
+  const nx = useMotionValue(0);
+  const ny = useMotionValue(0);
+  const sx = useSpring(nx, { stiffness: 140, damping: 16, mass: 0.6 });
+  const sy = useSpring(ny, { stiffness: 140, damping: 16, mass: 0.6 });
+  const frameX = useTransform(sx, [-1, 1], [-16, 16]);
+  const frameY = useTransform(sy, [-1, 1], [-12, 12]);
+  const frameRot = useTransform(sx, [-1, 1], [-1.6, 1.6]);
 
-  const rotateY = useTransform(sx, [0, 1], [-8, 8]);
-  const rotateX = useTransform(sy, [0, 1], [7, -7]);
-  const imgX = useTransform(sx, [0, 1], ["3%", "-3%"]);
-  const imgY = useTransform(sy, [0, 1], ["3%", "-3%"]);
-  const glareX = useTransform(sx, (v) => v * 100);
-  const glareY = useTransform(sy, (v) => v * 100);
-  const glare = useMotionTemplate`radial-gradient(480px circle at ${glareX}% ${glareY}%, rgb(255 255 255 / 0.2), transparent 60%)`;
-
-  const hover = useSpring(0, { stiffness: 200, damping: 22 });
-  const imgScale = useTransform(hover, [0, 1], [1.02, 1.1]);
-
-  // Cursor-following label, in px
-  const lx = useSpring(0, { stiffness: 380, damping: 30 });
-  const ly = useSpring(0, { stiffness: 380, damping: 30 });
+  const lx = useSpring(0, { stiffness: 400, damping: 32 });
+  const ly = useSpring(0, { stiffness: 400, damping: 32 });
 
   const onMove = (e: React.PointerEvent) => {
     if (e.pointerType !== "mouse" || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    px.set((e.clientX - r.left) / r.width);
-    py.set((e.clientY - r.top) / r.height);
+    nx.set(((e.clientX - r.left) / r.width) * 2 - 1);
+    ny.set(((e.clientY - r.top) / r.height) * 2 - 1);
     lx.set(e.clientX - r.left);
     ly.set(e.clientY - r.top);
   };
 
-  const onEnter = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse" || !ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    lx.jump(e.clientX - r.left);
-    ly.jump(e.clientY - r.top);
-    hover.set(1);
-    setHovering(true);
-  };
-
-  const onLeave = () => {
-    px.set(0.5);
-    py.set(0.5);
-    hover.set(0);
-    setHovering(false);
-  };
-
   return (
-    <div style={{ perspective: 1100 }}>
-      <motion.a
-        ref={ref}
-        href={project.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`Open ${project.title}`}
-        onPointerMove={onMove}
-        onPointerEnter={onEnter}
-        onPointerLeave={onLeave}
-        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-        className="group relative block aspect-[16/10] cursor-pointer overflow-hidden rounded-2xl border border-line bg-surface"
-      >
-        <motion.div style={{ x: imgX, y: imgY, scale: imgScale }} className="absolute -inset-[4%]">
-          <Image
-            key={theme}
-            src={projectImage(project.slug, theme)}
-            alt={`${project.title} screenshot`}
-            fill
-            sizes="(min-width: 768px) 50vw, 100vw"
-            className="object-cover"
-          />
-        </motion.div>
+    <motion.a
+      ref={ref}
+      href={project.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={fmt(t(UI.work.openLabel), { name: project.title })}
+      onPointerMove={onMove}
+      onPointerEnter={(e) => {
+        if (e.pointerType !== "mouse" || !ref.current) return;
+        const r = ref.current.getBoundingClientRect();
+        lx.jump(e.clientX - r.left);
+        ly.jump(e.clientY - r.top);
+        setHovering(true);
+      }}
+      onPointerLeave={() => {
+        nx.set(0);
+        ny.set(0);
+        setHovering(false);
+      }}
+      style={{ x: frameX, y: frameY, rotate: frameRot }}
+      className="relative block aspect-[16/10] cursor-pointer overflow-hidden"
+    >
+      <LiquidImage
+        key={theme}
+        src={projectImage(project.slug, theme)}
+        alt={`${project.title} screenshot`}
+        axis="x"
+        className="absolute inset-0"
+      />
 
-        <motion.div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-0 mix-blend-overlay transition-opacity duration-300 group-hover:opacity-100"
-          style={{ background: glare }}
-        />
-
-        <AnimatePresence>
-          {hovering && (
+      <AnimatePresence>
+        {hovering && (
+          <motion.span aria-hidden style={{ x: lx, y: ly }} className="pointer-events-none absolute left-0 top-0 z-10">
             <motion.span
-              aria-hidden
-              style={{ x: lx, y: ly }}
-              className="pointer-events-none absolute left-0 top-0 z-10"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              transition={{ type: "spring", duration: 0.35, bounce: 0.2 }}
+              className="flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-paper"
             >
-              <motion.span
-                initial={{ opacity: 0, scale: 0.6, filter: "blur(4px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 0.6, filter: "blur(4px)" }}
-                transition={{ type: "spring", duration: 0.35, bounce: 0.2 }}
-                className="flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-fg px-4 py-2 text-sm font-medium text-bg shadow-lg"
-              >
-                Visit site <ArrowUpRightIcon size={14} weight="bold" />
-              </motion.span>
+              {t(UI.work.open)}
+              <ArrowUpRightIcon size={16} weight="bold" />
             </motion.span>
-          )}
-        </AnimatePresence>
+          </motion.span>
+        )}
+      </AnimatePresence>
 
-        {/* Touch devices get a static affordance instead of the cursor label */}
-        <span className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-bg/80 text-fg backdrop-blur [@media(hover:hover)]:hidden">
-          <ArrowUpRightIcon size={16} weight="bold" />
-        </span>
-      </motion.a>
-    </div>
+      <span className="absolute right-0 top-0 flex size-10 items-center justify-center bg-accent text-paper [@media(hover:hover)]:hidden">
+        <ArrowUpRightIcon size={18} weight="bold" />
+      </span>
+    </motion.a>
   );
 }
 
-function ProjectCard({ project, index }: { project: Project; index: number }) {
+function Card({ project, index }: { project: Project; index: number }) {
+  const { t } = useApp();
   return (
     <motion.article
-      layout
-      initial={{ opacity: 0, y: 60 }}
+      initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.15 }}
-      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.9, ease: EASE, delay: (index % 2) * 0.1 }}
-      className={`flex flex-col ${index % 2 === 1 ? "md:pt-28" : ""}`}
+      viewport={{ once: true, amount: 0.25 }}
+      transition={{ duration: 0.9, ease: EASE }}
+      data-card={project.title}
+      className={`flex shrink-0 flex-col ${CARD_W}`}
     >
-      {/* Reveal ends slightly outside the frame so the 3D tilt never gets its corners shaved */}
-      <motion.div
-        initial={{ clipPath: "inset(12% 12% 12% 12% round 24px)" }}
-        whileInView={{ clipPath: "inset(-6% -6% -6% -6% round 16px)" }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ duration: 1.1, ease: EASE_IN_OUT }}
-      >
-        <ProjectMedia project={project} />
-      </motion.div>
+      <Media project={project} />
 
-      <div className="flex flex-col pt-6">
-        <div className="flex items-center justify-between gap-4 text-sm text-muted">
-          <span>{project.category === "Mobile" ? "Mobile app" : "Web app"}</span>
-        </div>
-        <h3 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
-          <a href={project.href} target="_blank" rel="noopener noreferrer" className="transition-colors duration-200 hover:text-accent">
-            {project.title}
-          </a>
-        </h3>
-        <p className="mt-3 max-w-[56ch] text-[15px] leading-relaxed text-muted">{project.description}</p>
+      <div className="mt-5 flex items-baseline justify-between gap-4 border-t border-paper/20 pt-4">
+        <h3 className="w-cond text-[clamp(2.4rem,3.4vw,3.4rem)] font-bold uppercase leading-[0.9]">{project.title}</h3>
+        <span className="shrink-0 text-sm text-paper/55 tabular-nums">
+          {String(index + 1).padStart(2, "0")} / {t(project.category === "Mobile" ? UI.work.mobile : UI.work.web)}
+        </span>
+      </div>
+      <p className="mt-3 max-w-[58ch] text-base leading-relaxed text-paper/65 lg:line-clamp-3">{t(project.description)}</p>
 
-        <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
-          <ul className="flex flex-wrap items-center gap-3.5">
-            {project.techs.map((t) => (
-              <li key={t.label}>
-                <TechIcon tech={t} size={20} />
-              </li>
-            ))}
-          </ul>
-          <a
-            href={project.github}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`${project.title} repository on GitHub`}
-            className="press group/repo relative flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full border border-line px-4 text-sm font-medium"
-          >
-            <span className="absolute inset-0 origin-bottom scale-y-0 rounded-full bg-fg transition-transform duration-300 ease-[var(--ease-out)] group-hover/repo:scale-y-100" />
-            <span className="relative flex items-center gap-2 transition-colors duration-300 group-hover/repo:text-bg">
-              <GithubLogoIcon size={16} weight="bold" />
-              Repo
-            </span>
-          </a>
-        </div>
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <ul className="flex flex-wrap items-center gap-3.5">
+          {project.techs.map((t) => (
+            <li key={t.label}>
+              <TechIcon tech={t} size={22} onDark />
+            </li>
+          ))}
+        </ul>
+        <a
+          href={project.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={fmt(t(UI.work.repoLabel), { name: project.title })}
+          className="press flex h-10 shrink-0 items-center gap-2 border border-paper/35 px-4 text-sm font-semibold transition-colors duration-200 hover:border-paper hover:bg-paper hover:text-ink"
+        >
+          <GithubLogoIcon size={16} weight="bold" />
+          Repo
+        </a>
       </div>
     </motion.article>
   );
 }
 
-export default function Projects() {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
-  const [showAll, setShowAll] = useState(false);
+type Tick = { label: string; at: number };
 
-  const filtered = filter === "All" ? PROJECTS : PROJECTS.filter((p) => p.category === filter);
-  const visible = showAll ? filtered : filtered.slice(0, INITIAL_COUNT);
-  const hasMore = filtered.length > INITIAL_COUNT;
+/**
+ * Draggable progress rail for the pinned gallery. Drag or click anywhere to scrub,
+ * clicks near a project mark snap to it, arrow keys step project by project.
+ */
+function Scrubber({
+  progress,
+  ticks,
+  onSeek,
+}: {
+  progress: MotionValue<number>;
+  ticks: Tick[];
+  onSeek: (p: number, live?: boolean) => void;
+}) {
+  const { t } = useApp();
+  const railRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [pct, setPct] = useState(0);
+  const [current, setCurrent] = useState<string>("");
+  const left = useTransform(progress, (v) => `${v * 100}%`);
+
+  useMotionValueEvent(progress, "change", (v) => {
+    const rounded = Math.round(v * 100);
+    setPct((p) => (p === rounded ? p : rounded));
+    // The project whose mark is closest to the playhead
+    let best = "";
+    let bestD = Infinity;
+    for (const t of ticks) {
+      const d = Math.abs(t.at - v);
+      if (d < bestD) {
+        bestD = d;
+        best = t.label;
+      }
+    }
+    setCurrent((c) => (c === best ? c : best));
+  });
+
+  const pointToProgress = (clientX: number, snap: boolean) => {
+    const r = railRef.current!.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    if (snap) {
+      const hit = ticks.find((t) => Math.abs(t.at - p) * r.width < 14);
+      if (hit) return hit.at;
+    }
+    return p;
+  };
+
+  const step = (dir: 1 | -1) => {
+    const p = progress.get();
+    const marks = ticks.map((t) => t.at);
+    const next =
+      dir > 0 ? (marks.find((a) => a > p + 0.005) ?? 1) : ([...marks].reverse().find((a) => a < p - 0.005) ?? 0);
+    onSeek(next);
+  };
 
   return (
-    <section id="projects" className="relative px-4 py-28 sm:px-6 md:py-36">
-      <div className="mx-auto max-w-[1400px]">
-        <div className="mb-16 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-4">
-            <RevealText as="h2" text="Featured Works" className="text-[clamp(2.75rem,7vw,6.5rem)] font-semibold leading-[0.95] tracking-tighter" />
-            <p className="max-w-[46ch] text-base leading-relaxed text-muted">
-              Web apps, mobile apps and games. Click any screenshot to open it live.
-            </p>
-          </div>
+    <div className="page-grid w-full shrink-0 items-center">
+      <span className="col-span-2 truncate text-sm font-semibold" aria-live="polite">
+        {current}
+      </span>
+      <div
+        ref={railRef}
+        role="slider"
+        tabIndex={0}
+        aria-label={t(UI.work.slider)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-valuetext={current}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          setDragging(true);
+          onSeek(pointToProgress(e.clientX, true));
+        }}
+        onPointerMove={(e) => dragging && onSeek(pointToProgress(e.clientX, false), true)}
+        onPointerUp={() => setDragging(false)}
+        onPointerCancel={() => setDragging(false)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+            e.preventDefault();
+            step(1);
+          } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.preventDefault();
+            step(-1);
+          } else if (e.key === "Home") onSeek(0);
+          else if (e.key === "End") onSeek(1);
+        }}
+        className={`group relative col-span-8 h-10 touch-none select-none ${dragging ? "cursor-grabbing" : "cursor-pointer"}`}
+      >
+        <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-paper/25" />
+        <motion.div style={{ scaleX: progress }} className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 origin-left bg-paper" />
+        {ticks.map((t) => (
+          <span
+            key={t.label}
+            style={{ left: `${t.at * 100}%` }}
+            className="group/tick absolute top-1/2 flex h-5 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+          >
+            <span className="h-3 w-px bg-paper/50 transition-transform duration-200 group-hover/tick:scale-y-150" />
+            <span className="pointer-events-none absolute bottom-full mb-2 translate-y-1 whitespace-nowrap bg-paper px-2 py-1 text-xs font-medium text-ink opacity-0 transition-[opacity,transform] duration-150 group-hover/tick:translate-y-0 group-hover/tick:opacity-100">
+              {t.label}
+            </span>
+          </span>
+        ))}
+        <motion.span
+          style={{ left }}
+          animate={{ scale: dragging ? 1.3 : 1 }}
+          transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+          className="pointer-events-none absolute top-1/2 -ml-2.5 -mt-2.5 size-5 border-2 border-paper bg-accent group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-accent"
+        />
+      </div>
+      <span className="col-span-2 hidden text-right text-sm text-paper/55 xl:inline">{t(UI.work.drag)}</span>
+    </div>
+  );
+}
 
-          <div role="tablist" aria-label="Filter projects" className="flex w-fit gap-1 rounded-full border border-line p-1">
-            {FILTERS.map((f) => {
-              const count = f === "All" ? PROJECTS.length : PROJECTS.filter((p) => p.category === f).length;
-              const active = filter === f;
-              return (
-                <button
-                  key={f}
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => {
-                    setFilter(f);
-                    setShowAll(false);
-                  }}
-                  className={`press relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-                    active ? "text-bg" : "text-muted hover:text-fg"
-                  }`}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="filter-pill"
-                      className="absolute inset-0 rounded-full bg-fg"
-                      transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-                    />
-                  )}
-                  <span className="relative">{f}</span>
-                  <span className="relative font-mono text-[11px] opacity-60 tabular-nums">{count}</span>
-                </button>
-              );
-            })}
-          </div>
+export default function Projects() {
+  const outerRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  const [distance, setDistance] = useState(0);
+  const [ticks, setTicks] = useState<Tick[]>([]);
+  const distanceMV = useMotionValue(0);
+  const lenis = useLenis();
+  const { t } = useApp();
+
+  // Horizontal pan only on wide screens with motion allowed; otherwise a plain vertical list
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
+    const update = () => setPinned(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!pinned || !trackRef.current) {
+      setDistance(0);
+      distanceMV.set(0);
+      return;
+    }
+    const track = trackRef.current;
+    const measure = () => {
+      const d = Math.max(0, track.scrollWidth - window.innerWidth);
+      setDistance(d);
+      distanceMV.set(d);
+      // Progress value at which each card sits centred on screen
+      const cards = Array.from(track.querySelectorAll<HTMLElement>("[data-card]"));
+      setTicks(
+        cards.map((c) => ({
+          label: c.dataset.card!,
+          at: d ? Math.min(1, Math.max(0, (c.offsetLeft + c.offsetWidth / 2 - window.innerWidth / 2) / d)) : 0,
+        })),
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(track);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [pinned, distanceMV]);
+
+  const { scrollYProgress } = useScroll({ target: outerRef, offset: ["start start", "end end"] });
+  const x = useTransform(() => -scrollYProgress.get() * distanceMV.get());
+
+  // Camera move on entry: the dark room arrives as an inset frame and opens up to fill the screen
+  const { scrollYProgress: enter } = useScroll({ target: outerRef, offset: ["start end", "start start"] });
+  const inset = useTransform(enter, [0, 1], [8, 0]);
+  const clipPath = useTransform(() => `inset(${inset.get()}% ${inset.get() * 0.7}% 0% ${inset.get() * 0.7}%)`);
+
+  // Map a 0..1 gallery position back to a page scroll offset
+  const seek = (p: number, live = false) => {
+    const el = outerRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    const y = top + p * (el.offsetHeight - window.innerHeight);
+    if (lenis) lenis.scrollTo(y, live ? { lerp: 0.3 } : { duration: 1.1 });
+    else window.scrollTo({ top: y, behavior: live ? "auto" : "smooth" });
+  };
+
+  return (
+    <section
+      id="projects"
+      ref={outerRef}
+      data-snap="start"
+      className="relative"
+      style={pinned ? { height: `calc(100dvh + ${distance}px)` } : undefined}
+    >
+      {/* Rail lives in its own row under the cards, so it can never overlap them */}
+      <motion.div
+        style={pinned ? { clipPath } : undefined}
+        className={`bg-ink text-paper dark:bg-surface ${
+          pinned ? "sticky top-0 flex h-[100dvh] flex-col gap-6 overflow-hidden pb-8 pt-20" : "py-24"
+        }`}
+      >
+        <div className={pinned ? "flex min-h-0 flex-1 items-center" : ""}>
+          <motion.div
+            ref={trackRef}
+            style={pinned ? { x } : undefined}
+            className={pinned ? "relative flex w-max items-start gap-12 pl-9 pr-[12vw]" : "flex flex-col gap-20 px-4 sm:px-6"}
+          >
+            {/* Sized so the longest title ("DESTACADOS") still fits its column at full scroll stretch */}
+            <div className="flex shrink-0 flex-col justify-center lg:w-[34vw] lg:self-center">
+              <KineticTitle rest={62} fast={74} className="w-cond text-[clamp(3.5rem,6.2vw,7.5rem)] font-extrabold uppercase leading-[0.84]">
+                {t(UI.work.selected)}
+                <br />
+                <span className="text-accent">{t(UI.work.work)}</span>
+              </KineticTitle>
+              <p className="mt-6 max-w-[32ch] text-lg leading-snug text-paper/65">
+                {t(UI.work.intro)}
+              </p>
+              <p className="mt-8 hidden items-center gap-3 text-sm text-paper/55 lg:flex">
+                <span className="tabular-nums">{fmt(t(UI.work.count), { n: PROJECTS.length })}</span>
+                <ArrowRightIcon size={15} />
+              </p>
+            </div>
+
+            {PROJECTS.map((p, i) => (
+              <Card key={p.slug} project={p} index={i} />
+            ))}
+
+            <motion.a
+              href={LINKS.github}
+              target="_blank"
+              rel="noopener noreferrer"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.8, ease: EASE }}
+              className="press group flex aspect-square w-full shrink-0 flex-col justify-between bg-accent p-7 text-paper lg:w-[min(24vw,calc(100dvh-400px))] lg:self-center"
+            >
+              <GithubLogoIcon size={36} weight="bold" />
+              <span>
+                <span className="block text-sm">{t(UI.work.more)}</span>
+                <span className="w-cond mt-1 flex items-center gap-2 text-[clamp(3rem,4.5vw,4.5rem)] font-bold uppercase leading-[0.9]">
+                  adrirf7
+                  <ArrowUpRightIcon size={40} weight="bold" className="transition-transform duration-300 ease-[var(--ease-out)] group-hover:-translate-y-1 group-hover:translate-x-1" />
+                </span>
+              </span>
+            </motion.a>
+          </motion.div>
         </div>
 
-        <motion.div layout className="grid grid-cols-1 gap-x-10 gap-y-20 md:grid-cols-2">
-          <AnimatePresence mode="popLayout">
-            {visible.map((p, i) => (
-              <ProjectCard key={p.slug} project={p} index={i} />
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {hasMore && (
-          <motion.div layout className="mt-20 flex justify-center">
-            <button
-              onClick={() => setShowAll((v) => !v)}
-              aria-expanded={showAll}
-              className="press group flex h-12 items-center gap-3 rounded-full border border-line pl-6 pr-2 text-sm font-medium transition-colors duration-200 hover:bg-surface"
-            >
-              {showAll ? "Show less" : `View ${filtered.length - INITIAL_COUNT} more`}
-              <span
-                className={`flex size-8 items-center justify-center rounded-full bg-fg text-bg transition-transform duration-300 ease-[var(--ease-out)] ${
-                  showAll ? "rotate-180" : ""
-                }`}
-              >
-                <CaretDownIcon size={14} weight="bold" />
-              </span>
-            </button>
-          </motion.div>
-        )}
-      </div>
+        {pinned && <Scrubber progress={scrollYProgress} ticks={ticks} onSeek={seek} />}
+      </motion.div>
     </section>
   );
 }

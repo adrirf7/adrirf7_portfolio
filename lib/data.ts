@@ -1,3 +1,5 @@
+import type { L } from "./i18n";
+
 export type Tech = {
   label: string;
   /** Same icon for both themes */
@@ -37,48 +39,28 @@ export const LINKS = {
   cv: "/_CV_AdrianRodriguez.pdf",
 };
 
-export const NAV = [
-  { label: "About", href: "#about" },
-  { label: "Skills", href: "#skills" },
-  { label: "Projects", href: "#projects" },
-  { label: "Experience", href: "#experience" },
-  { label: "Connect", href: "#connect" },
-];
-
-export const MARQUEE_WORDS = [
-  "Frontend Developer",
-  "Web Developer",
-  "React",
-  "TypeScript",
-  "React Native",
-  "Clean Code",
-  "Available for Work",
-  "Mobile Apps",
-  "Node.js",
-  "UI / UX",
-];
-
-export const QUICK_TAGS = ["React", "TypeScript", "Node.js", "React Native", "MySQL"];
-
-export const SKILL_GROUPS: { title: string; blurb: string; items: Tech[] }[] = [
+export const SKILL_GROUPS: { title: L; blurb: L; items: Tech[] }[] = [
   {
-    title: "Frontend",
-    blurb: "Interfaces that load fast, read clearly and hold up on every screen size.",
+    title: { en: "Frontend", es: "Frontend" },
+    blurb: {
+      en: "Interfaces that load fast, read clearly and hold up on every screen size.",
+      es: "Interfaces que cargan rápido, se leen con claridad y aguantan en cualquier pantalla.",
+    },
     items: [t.html, t.css, t.js, t.ts, t.react, t.next, t.astro, t.tailwind, t.bootstrap, t.vite],
   },
   {
-    title: "Mobile",
-    blurb: "Cross-platform apps shipped to real devices.",
+    title: { en: "Mobile", es: "Móvil" },
+    blurb: { en: "Cross-platform apps shipped to real devices.", es: "Apps multiplataforma publicadas en dispositivos reales." },
     items: [t.rn, t.expo],
   },
   {
-    title: "Backend & Data",
-    blurb: "APIs, auth and the databases behind them.",
+    title: { en: "Backend & Data", es: "Backend y datos" },
+    blurb: { en: "APIs, auth and the databases behind them.", es: "APIs, autenticación y las bases de datos que hay detrás." },
     items: [t.node, t.java, t.mysql, t.mongo, t.firebase],
   },
   {
-    title: "Tools & AI",
-    blurb: "Version control and LLM integrations.",
+    title: { en: "Tools & AI", es: "Herramientas e IA" },
+    blurb: { en: "Version control and LLM integrations.", es: "Control de versiones e integraciones con LLMs." },
     items: [t.git, t.openrouter],
   },
 ];
@@ -89,7 +71,7 @@ export type Project = {
   slug: string;
   category: Category;
   title: string;
-  description: string;
+  description: L;
   href: string;
   github: string;
   techs: Tech[];
@@ -100,8 +82,10 @@ export const PROJECTS: Project[] = [
     slug: "piggybank",
     category: "Mobile",
     title: "PiggyBank",
-    description:
-      "Cross-platform mobile finance app with AI assistant, real-time analytics, multi-account support and production builds via EAS.",
+    description: {
+      en: "Cross-platform mobile finance app with AI assistant, real-time analytics, multi-account support and production builds via EAS.",
+      es: "App móvil de finanzas multiplataforma con asistente de IA, analíticas en tiempo real, varias cuentas y builds de producción con EAS.",
+    },
     href: "https://github.com/adrirf7/piggybank",
     github: "https://github.com/adrirf7/piggybank",
     techs: [t.rn, t.expo, t.tailwind, t.firebase, t.openrouter, t.ts],
@@ -110,8 +94,10 @@ export const PROJECTS: Project[] = [
     slug: "marketly",
     category: "Web",
     title: "Marketly",
-    description:
-      "Full-stack e-commerce platform with authenticated admin panel, content CRUD, competition API integration and GitHub API as CMS.",
+    description: {
+      en: "Full-stack e-commerce platform with authenticated admin panel, content CRUD, competition API integration and GitHub API as CMS.",
+      es: "Plataforma e-commerce full-stack con panel de administración autenticado, CRUD de contenido, integración con una API externa y la API de GitHub como CMS.",
+    },
     href: "https://marketly-adrirf7.vercel.app/",
     github: "https://github.com/adrirf7/Marketly",
     techs: [t.ts, t.astro, t.react, t.node, t.mongo, t.tailwind],
@@ -120,8 +106,10 @@ export const PROJECTS: Project[] = [
     slug: "next-step",
     category: "Web",
     title: "NextStep",
-    description:
-      "Minimalist Kanban board for managing projects and tasks in real time, with Google authentication, independent project organization and drag-and-drop between states.",
+    description: {
+      en: "Minimalist Kanban board for managing projects and tasks in real time, with Google authentication, independent project organization and drag-and-drop between states.",
+      es: "Tablero Kanban minimalista para gestionar proyectos y tareas en tiempo real, con login de Google, proyectos independientes y arrastrar y soltar entre estados.",
+    },
     href: "https://nextsstep.vercel.app/",
     github: "https://github.com/adrirf7/NextStep",
     techs: [t.react, t.ts, t.vite, t.tailwind, t.firebase],
@@ -130,7 +118,10 @@ export const PROJECTS: Project[] = [
     slug: "react-shop",
     category: "Web",
     title: "React Shop",
-    description: "Shopping cart app with product catalog, context API state management and dynamic filtering.",
+    description: {
+      en: "Shopping cart app with product catalog, context API state management and dynamic filtering.",
+      es: "Carrito de compra con catálogo de productos, estado gestionado con Context API y filtros dinámicos.",
+    },
     href: "https://shopping-cart-gy9z.vercel.app/",
     github: "https://github.com/adrirf7/Shopping-Cart",
     techs: [t.astro, t.js, t.css],
@@ -139,7 +130,10 @@ export const PROJECTS: Project[] = [
     slug: "black-jack",
     category: "Web",
     title: "Black Jack",
-    description: "Browser-based blackjack game with full card logic, bet system and responsive layout.",
+    description: {
+      en: "Browser-based blackjack game with full card logic, bet system and responsive layout.",
+      es: "Blackjack en el navegador con toda la lógica de cartas, sistema de apuestas y diseño responsive.",
+    },
     href: "https://black-jack-adrirf7.vercel.app/",
     github: "https://github.com/adrirf7/Black-Jack",
     techs: [t.js, t.vite, t.css],
@@ -148,7 +142,10 @@ export const PROJECTS: Project[] = [
     slug: "snake-game",
     category: "Web",
     title: "Snake Game",
-    description: "Classic snake game built with canvas API, keyboard controls and increasing difficulty.",
+    description: {
+      en: "Classic snake game built with canvas API, keyboard controls and increasing difficulty.",
+      es: "El clásico Snake hecho con la API de canvas, controles de teclado y dificultad creciente.",
+    },
     href: "https://snake-adrirf7.vercel.app/",
     github: "https://github.com/adrirf7/Snake",
     techs: [t.js, t.vite, t.css],
@@ -157,35 +154,66 @@ export const PROJECTS: Project[] = [
     slug: "todo",
     category: "Web",
     title: "Todo App",
-    description: "Task manager with status filters, local storage persistence and smooth UI transitions.",
+    description: {
+      en: "Task manager with status filters, local storage persistence and smooth UI transitions.",
+      es: "Gestor de tareas con filtros por estado, persistencia en local storage y transiciones suaves.",
+    },
     href: "https://todo-adrirf7.vercel.app/",
     github: "https://github.com/adrirf7/Todo",
     techs: [t.js, t.astro],
   },
 ];
 
-export const EXPERIENCE = [
+export const EXPERIENCE: {
+  period: L;
+  year: string;
+  location: L;
+  company: string;
+  role: L;
+  bullets: L[];
+  tools: string[];
+}[] = [
   {
-    period: "Feb 2026 - Jun 2026",
-    location: "Madrid, Spain",
+    period: { en: "Feb 2026 - Jun 2026", es: "Feb 2026 - Jun 2026" },
+    year: "2026",
+    location: { en: "Madrid, Spain", es: "Madrid, España" },
     company: "UD SANSE",
-    role: "Internship, Web Development",
+    role: { en: "Internship, Web Development", es: "Prácticas, Desarrollo Web" },
     bullets: [
-      "Built the club's official website with React 19, Vite and Tailwind CSS 4.",
-      "Implemented an authenticated admin panel with full content CRUD and image management.",
-      "Integrated the official competition API and automated publishing through the GitHub API as a CMS.",
+      {
+        en: "Built the club's official website with React 19, Vite and Tailwind CSS 4.",
+        es: "Desarrollé el sitio web oficial del club con React 19, Vite y Tailwind CSS 4.",
+      },
+      {
+        en: "Implemented an authenticated admin panel with full content CRUD and image management.",
+        es: "Implementé un panel de administración autenticado con CRUD completo de contenido y gestión de imágenes.",
+      },
+      {
+        en: "Integrated the official competition API and automated publishing through the GitHub API as a CMS.",
+        es: "Integré la API oficial de competición y automaticé la publicación vía GitHub API como CMS.",
+      },
     ],
     tools: ["React 19", "Vite", "Tailwind CSS 4", "GitHub API"],
   },
   {
-    period: "Jun 2024",
-    location: "Madrid, Spain",
+    period: { en: "Jun 2025", es: "Jun 2025" },
+    year: "2025",
+    location: { en: "Madrid, Spain", es: "Madrid, España" },
     company: "SEIDOR",
-    role: "Internship, Software Development",
+    role: { en: "Internship, Software Development", es: "Prácticas, Desarrollo de Software" },
     bullets: [
-      "Developed a store management system with Java and MySQL: database, business logic and full CRUD.",
-      "Integrated AI features through an external API and built a desktop interface with Swing.",
-      "Applied layered architecture, JDBC data access and REST API consumption.",
+      {
+        en: "Developed a store management system with Java and MySQL: database, business logic and full CRUD.",
+        es: "Desarrollé un sistema de gestión para tienda con Java y MySQL: base de datos, lógica de negocio y CRUD completo.",
+      },
+      {
+        en: "Integrated AI features through an external API and built a desktop interface with Swing.",
+        es: "Integré funciones de IA mediante API externa y construí una interfaz gráfica con Swing.",
+      },
+      {
+        en: "Applied layered architecture, JDBC data access and REST API consumption.",
+        es: "Apliqué programación por capas, acceso a datos con JDBC y consumo de APIs REST.",
+      },
     ],
     tools: ["Java", "MySQL", "Swing", "JDBC", "REST API"],
   },

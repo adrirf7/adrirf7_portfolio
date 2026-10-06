@@ -2,17 +2,24 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ── Tokens ─────────────────────────────────────────────────────────────── */
+/*
+  Swiss / International Typographic Style.
+  - One family (Archivo), contrast comes from its width axis: condensed for statements,
+    expanded for section names.
+  - One colour: International Klein-style blue. Everything else is ink and paper.
+  - Shape system: sharp. No radius anywhere except the round status dot.
+*/
 :root {
-  --bg: oklch(0.975 0.004 165);
-  --surface: oklch(0.945 0.006 165);
-  --fg: oklch(0.2 0.012 165);
-  --muted: oklch(0.47 0.012 165);
-  --faint: oklch(0.7 0.01 165);
-  --line: oklch(0.2 0.012 165 / 0.12);
-  --accent: oklch(0.55 0.12 165);
-  --accent-fg: oklch(0.98 0.01 165);
-  --glow: oklch(0.75 0.14 165 / 0.35);
+  --bg: #f2f3f5;
+  --surface: #e7e9ed;
+  --fg: #0e0f12;
+  --muted: #5d6270;
+  --faint: #a4a8b3;
+  --line: rgb(14 15 18 / 0.14);
+  --accent: #2b3ff5;
+  --accent-deep: #0b1356;
+  --ink: #0e0f12;
+  --paper: #f2f3f5;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -20,15 +27,13 @@
 }
 
 .dark {
-  --bg: oklch(0.155 0.006 165);
-  --surface: oklch(0.2 0.008 165);
-  --fg: oklch(0.955 0.006 165);
-  --muted: oklch(0.7 0.01 165);
-  --faint: oklch(0.45 0.01 165);
-  --line: oklch(0.955 0.006 165 / 0.1);
-  --accent: oklch(0.82 0.14 165);
-  --accent-fg: oklch(0.18 0.03 165);
-  --glow: oklch(0.7 0.14 165 / 0.28);
+  --bg: #0b0c0f;
+  --surface: #16181d;
+  --fg: #eceef2;
+  --muted: #9aa0ad;
+  --faint: #4b505c;
+  --line: rgb(236 238 242 / 0.12);
+  --accent: #4b63ff;
   color-scheme: dark;
 }
 
@@ -40,19 +45,16 @@
   --color-faint: var(--faint);
   --color-line: var(--line);
   --color-accent: var(--accent);
-  --color-accent-fg: var(--accent-fg);
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --color-accent-deep: var(--accent-deep);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* ── Base ───────────────────────────────────────────────────────────────── */
 html {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -60,159 +62,80 @@ body {
   color: var(--fg);
   font-family: var(--font-sans);
   overflow-x: clip;
+  font-feature-settings: "ss01";
 }
 
 ::selection {
   background: var(--accent);
-  color: var(--accent-fg);
+  color: var(--paper);
 }
 
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 6px;
+  outline-offset: 2px;
+}
+
+/* Width axis presets (Archivo wdth 62-125) */
+.w-cond { font-stretch: 62%; }
+.w-narrow { font-stretch: 80%; }
+.w-wide { font-stretch: 125%; }
+
+/* 12-column page grid shared by every section */
+.page-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  padding-inline: clamp(16px, 2.4vw, 36px);
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+/* Section name: expanded and light, the counterweight to the condensed statements */
+.section-name {
+  font-stretch: 125%;
+  font-weight: 300;
+  font-size: clamp(2.5rem, 4.3vw, 4.75rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+/* Underline that draws in from the left on hover */
+.draw-line {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition: background-size 400ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .draw-line:hover,
+  .group:hover .draw-line {
+    background-size: 100% 1px;
+  }
 }
 
 /* Lenis */
-html.lenis,
-html.lenis body {
-  height: auto;
-}
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-.lenis.lenis-stopped {
-  overflow: clip;
-}
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: clip; }
 
-/* ── Film grain: fixed, non-interactive, never on a scrolling layer ────── */
-.grain {
-  position: fixed;
-  inset: -50%;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  animation: grain 1.2s steps(6) infinite;
-}
-.dark .grain {
-  opacity: 0.07;
-}
+.press { transition: transform 140ms var(--ease-out); }
+.press:active { transform: scale(0.98); }
 
-@keyframes grain {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(-4%, 3%); }
-  40% { transform: translate(3%, -5%); }
-  60% { transform: translate(-2%, 6%); }
-  80% { transform: translate(5%, -2%); }
-  100% { transform: translate(0, 0); }
-}
-
-/* Returning visitors and reduced motion skip the preloader before paint */
-html[data-intro="seen"] .preloader {
-  display: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .preloader {
-    display: none;
-  }
-}
-
-/* ── Spotlight cards: border + fill follow the cursor (--x/--y set in JS) ── */
-.spot-card {
-  position: relative;
-  isolation: isolate;
-  border-radius: 1.25rem;
-  padding: 1px;
-  background: var(--line);
-}
-.spot-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: radial-gradient(360px circle at var(--x, -999px) var(--y, -999px), var(--accent), transparent 60%);
-  opacity: 0;
-  transition: opacity 400ms var(--ease-out);
-}
-.spot-inner {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-  border-radius: calc(1.25rem - 1px);
-  background: var(--bg);
-}
-.spot-inner::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(520px circle at var(--x, -999px) var(--y, -999px), var(--glow), transparent 55%);
-  opacity: 0;
-  transition: opacity 400ms var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .spot-grid:hover .spot-card::before {
-    opacity: 1;
-  }
-  .spot-card:hover .spot-inner::before {
-    opacity: 1;
-  }
-}
-
-.dot-pattern {
-  background-image: radial-gradient(var(--line) 1px, transparent 1px);
-  background-size: 14px 14px;
-}
-
-/* Outlined display text */
-.text-outline {
-  color: transparent;
-  -webkit-text-stroke: 1px var(--fg);
-}
-
-/* Pressable feedback */
-.press {
-  transition: transform 160ms var(--ease-out);
-}
-.press:active {
-  transform: scale(0.97);
-}
-
-/* Theme switch: don't animate every color on the page */
-.theme-switching,
-.theme-switching * {
-  transition: none !important;
-}
-
-/* Theme circle reveal: let the JS clip-path drive it */
+/* Theme circle reveal is driven from JS */
 ::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-::view-transition-new(root) {
-  z-index: 9999;
-}
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { z-index: 9999; }
+.theme-switching, .theme-switching * { transition: none !important; }
 
-/* Status pulse (semantic: availability) */
-@keyframes ping-soft {
-  0% { transform: scale(1); opacity: 0.6; }
-  80%, 100% { transform: scale(2.4); opacity: 0; }
-}
-.ping-soft {
-  animation: ping-soft 1.8s var(--ease-out) infinite;
-}
+@keyframes blink { 50% { opacity: 0.25; } }
+.blink { animation: blink 2.4s steps(1) infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .grain,
-  .ping-soft {
-    animation: none;
-  }
+  .blink { animation: none; }
+  .draw-line { transition: none; }
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--faint); }

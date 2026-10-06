@@ -2,35 +2,66 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { MotionConfig, useReducedMotion } from "motion/react";
-import { ReactLenis } from "lenis/react";
+import { ReactLenis, useLenis } from "lenis/react";
+import { setScrollVelocity } from "@/lib/scrollVelocity";
+import type { L, Lang } from "@/lib/i18n";
 
 type Theme = "light" | "dark";
 
 type Ctx = {
   theme: Theme;
   setTheme: (t: Theme) => void;
-  /** True once the preloader has handed the stage to the hero */
-  introDone: boolean;
-  finishIntro: () => void;
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  /** Pick the current language out of a bilingual value */
+  t: (v: L) => string;
 };
 
 const AppCtx = createContext<Ctx>({
-  theme: "dark",
+  theme: "light",
   setTheme: () => {},
-  introDone: false,
-  finishIntro: () => {},
+  lang: "en",
+  setLang: () => {},
+  t: (v) => v.en,
 });
 
 export const useApp = () => useContext(AppCtx);
+
+/** Publishes Lenis velocity for render loops that live outside React. */
+function VelocityBridge() {
+  useLenis((lenis) => setScrollVelocity(lenis.velocity));
+  return null;
+}
 
 function readTheme(): Theme {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [introDone, setIntroDone] = useState(false);
+  const [theme, setThemeState] = useState<Theme>("light");
+  const [lang, setLangState] = useState<Lang>("en");
   const reduce = useReducedMotion();
+
+  // Language: saved choice, else the browser's preference
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem("lang");
+    } catch {}
+    const initial: Lang = stored === "es" || stored === "en" ? stored : navigator.language.startsWith("es") ? "es" : "en";
+    setLangState(initial);
+    document.documentElement.lang = initial;
+  }, []);
+
+  const setLang = useCallback((l: Lang) => {
+    setLangState(l);
+    document.documentElement.lang = l;
+    try {
+      localStorage.setItem("lang", l);
+    } catch {}
+  }, []);
+
+  const t = useCallback((v: L) => v[lang], [lang]);
 
   // The inline script in layout.tsx already set the class before paint
   useEffect(() => {
@@ -57,15 +88,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  const finishIntro = useCallback(() => setIntroDone(true), []);
-
   return (
-    <AppCtx.Provider value={{ theme, setTheme, introDone, finishIntro }}>
+    <AppCtx.Provider value={{ theme, setTheme, lang, setLang, t }}>
       <MotionConfig reducedMotion="user">
         {reduce ? (
           children
         ) : (
           <ReactLenis root options={{ lerp: 0.1, smoothWheel: true }}>
+            <VelocityBridge />
             {children}
           </ReactLenis>
         )}
